@@ -1,0 +1,178 @@
+alias: test_timer
+description: ""
+triggers:
+  - command:
+      - (Set|start|begin) (a|an) {minutes} minute timer
+      - (Set|start|begin) a timer for {minutes} minutes
+      - "{minutes} minute timer"
+    id: Start Timer
+    trigger: conversation
+  - command:
+      - (Set|start|begin) a timer for {minutes} minutes (and) {seconds} seconds
+      - (Set|start|begin) a {minutes} minute (and) {seconds} second timer
+      - "{minutes} minute (and) {seconds} second timer"
+    id: Timer minutes and seconds
+    trigger: conversation
+  - command:
+      - (Set|start|begin) a timer (for|with) {seconds} seconds
+      - (Set|start|begin) a {seconds} second timer
+      - "{seconds} second timer"
+    id: Timer seconds only
+    trigger: conversation
+  - command: (cancel|stop) timer
+    id: Cancel Timer
+    trigger: conversation
+  - command: Pause timer
+    id: "Pause timer "
+    trigger: conversation
+  - command:
+      - "Resume timer "
+    id: "Resume timer "
+    trigger: conversation
+  - command:
+      - Time remaining
+      - time left
+      - how much longer
+    id: Time Remaining
+    trigger: conversation
+  - entity_id:
+      - timer.test_timer
+    to: idle
+    id: Timer end
+    trigger: state
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - Start Timer
+        sequence:
+          - target:
+              entity_id: timer.test_timer
+            data:
+              duration: 00:0{{ trigger.slots.minutes }}:00{{ trigger.slots.seconds }}
+            enabled: true
+            action: timer.start
+          - set_conversation_response: "timer set for {{ trigger.slots.minutes }} minutes  "
+            enabled: true
+      - conditions:
+          - condition: trigger
+            id:
+              - Timer minutes and seconds
+        sequence:
+          - target:
+              entity_id: timer.test_timer
+            data:
+              duration: 00:0{{ trigger.slots.minutes }}:00{{ trigger.slots.seconds }}
+            enabled: true
+            action: timer.start
+          - set_conversation_response: >-
+              timer set for {{ trigger.slots.minutes }} minutes and
+              {{trigger.slots.seconds }} seconds 
+            enabled: true
+      - conditions:
+          - condition: trigger
+            id:
+              - Timer seconds only
+        sequence:
+          - target:
+              entity_id: timer.test_timer
+            data:
+              duration: 00:0{{ trigger.slots.minutes }}:00{{ trigger.slots.seconds }}
+            enabled: true
+            action: timer.start
+          - set_conversation_response: timer set for {{ trigger.slots.seconds }} seconds
+            enabled: true
+      - conditions:
+          - condition: trigger
+            id:
+              - Pause timer
+        sequence:
+          - target:
+              entity_id: timer.test_timer
+            data: {}
+            action: timer.pause
+      - conditions:
+          - condition: trigger
+            id:
+              - Cancel Timer
+        sequence:
+          - data: {}
+            target:
+              entity_id: timer.test_timer
+            action: timer.cancel
+      - conditions:
+          - condition: trigger
+            id:
+              - "Resume timer "
+        sequence:
+          - target:
+              entity_id: timer.test_timer
+            data: {}
+            action: timer.start
+      - conditions:
+          - condition: trigger
+            id:
+              - Time Remaining
+        sequence:
+          - metadata: {}
+            data: {}
+            target:
+              entity_id: timer.test_timer
+            action: timer.pause
+            enabled: true
+          - metadata: {}
+            data: {}
+            target:
+              entity_id: timer.test_timer
+            action: timer.start
+            enabled: true
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 0
+              milliseconds: 300
+          - set_conversation_response: >-
+              There is {% if is_state('timer.test_timer', 'active') %} {{
+              states('sensor.timer_display') }} {% else %} no timer set or
+              remaining {% endif %}
+            enabled: true
+          - set_conversation_response: |-
+              There is 
+              {% set f = state_attr('timer.test_timer', 'finishes_at') %}
+              {{ '00:00:00' if f == None else 
+                (as_datetime(f) - now()).total_seconds() | timestamp_custom('%H:%M:%S', false) }} remaining
+            enabled: false
+      - conditions:
+          - condition: trigger
+            id:
+              - Timer end
+        sequence:
+          - data:
+              entity_id: media_player.bathroom
+              message: >-
+                (the timer finished at {{ now().strftime('%-I') }} {{
+                now().strftime('%M %p') }} on {{ now().strftime('%A') }} {{
+                now().strftime('%B') }} {{ now().strftime('%d') }}
+              cache: true
+            enabled: true
+            action: tts.cloud_say
+          - metadata: {}
+            data:
+              title: "TIMER DONE!!! "
+              message: >-
+                The timer finished at {{ now().strftime('%-I') }} {{
+                now().strftime('%M         %p') }} on {{ now().strftime('%A') }}
+                {{ now().strftime('%B') }} {{         now().strftime('%d') }}
+            action: notify.mobile_app_pixel_8a
+          - data:
+              entity_id: media_player.vlc_telnet
+              message: >-
+                (the timer finished at {{ now().strftime('%-I') }} {{
+                now().strftime('%M %p') }} on {{ now().strftime('%A') }} {{
+                now().strftime('%B') }} {{ now().strftime('%d') }}
+              cache: true
+            enabled: true
+            action: tts.cloud_say
+mode: single
