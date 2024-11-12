@@ -1,0 +1,23 @@
+- platform: template
+  sensors:
+    timer_display:
+    #  attributes:
+      value_template: >-
+       {% set f = state_attr('timer.test_timer', 'finishes_at') %}
+       {{ '00:00:00' if f == None else 
+        (as_datetime(f) - now()).total_seconds() | timestamp_custom('%H:%M:%S', false) }}
+
+
+- platform: template
+  sensors:
+ # name: 'timer one's
+  #id: timertesting
+  #  timer_remaining:
+    #  value_template: "{{state_attr('timer.test_timer', 'remaining')}}"
+    timer_remaining:
+      value_template: >
+        {% if is_state('timer.test_timer', 'active') %}
+          {{state_attr('timer.test_timer', 'remaining')}}
+        {% else %} 
+          No timer running
+        {% endif %}   
