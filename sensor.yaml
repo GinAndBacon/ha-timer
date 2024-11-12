@@ -1,3 +1,4 @@
+           ##Needed for timers to get time remaining 
 - platform: template
   sensors:
     timer_display:
@@ -20,4 +21,66 @@
           {{state_attr('timer.test_timer', 'remaining')}}
         {% else %} 
           No timer running
-        {% endif %}   
+        {% endif %} 
+
+        #---------------------------------------------Used for assist_satellite muting
+
+    respeaker_listening_phase:
+      value_template: >
+        {% if is_state('assist_satellite.respeaker_assist_satellite', 'listening') %}
+        listening
+        {% else %} 
+            no
+        {% endif %}  
+        
+    respeaker_thinking_phase:
+      value_template: >
+        {% if is_state('assist_satellite.respeaker_assist_satellite', 'processintg') %}
+         thinking
+        {% else %} 
+            no
+        {% endif %}    
+
+        #----------------------automations using the above template sensors
+
+- id: '1729013103970'
+  alias: New automation1
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.respeaker_listening_phase
+    to: listening
+    enabled: true
+    from: 'no'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 0
+  conditions: []
+  - action: media_player.volume_mute
+    metadata: {}
+    data:
+      is_volume_muted: true
+    target:
+      entity_id: media_player.sony_soundbar
+  mode: single       
+
+- id: '1730534592796'
+  alias: respeaker replying
+  description: done noise
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.respeaker_replying_phase
+    to: replying
+    from: 'no'
+  conditions: []
+  actions:
+  - action: media_player.volume_mute
+    metadata: {}
+    data:
+      is_volume_muted: false
+    target:
+      entity_id: media_player.sony_soundbar
+  mode: single  
